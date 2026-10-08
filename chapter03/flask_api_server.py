@@ -7,9 +7,10 @@ Built and tested with Python 3.7 on Raspberry Pi 4 Model B
 """
 import logging
 import os
-from flask import Flask, request, render_template                                    # (1)
-from flask_restful import Resource, Api, reqparse, inputs                            # (2)
-from gpiozero import PWMLED                                                  # (3)
+from flask import Flask, request, render_template
+from flask_restful import Resource, Api
+from marshmallow import Schema, fields, validate, ValidationError
+from gpiozero import PWMLED
 
 
 # Initialize Logging
@@ -20,7 +21,7 @@ logger.setLevel(logging.INFO) # Debugging for this file.
 
 # Flask & Flask-RESTful instance variables
 app = Flask(__name__) # Core Flask app.                                              # (4)
-api = Api(app) # Flask-RESTful extension wrapper                                     # (5)
+api = Api(app)
 
 
 # Global variables
@@ -54,21 +55,16 @@ def index():
     return render_template('index_api_client.html', pin=LED_GPIO_PIN)                # (9)
 
 
+class LEDControlSchema(Schema):
+    level = fields.Int(
+        required=True,
+        validate=validate.Range(min=0, max=100, error="Value must be between 0 and 100."),
+        error_messages={"required": "Set LED brightness level. Field is required."}
+    )
+
 # Flask-restful resource definitions.
 # A 'resource' is modeled as a Python Class.
 class LEDControl(Resource):  # (10)
-
-    def __init__(self):
-        self.args_parser = reqparse.RequestParser()                                  # (11)
-
-        self.args_parser.add_argument(
-            name='level',  # Name of arguement
-            required=True,  # Mandatory arguement
-            type=inputs.int_range(0, 100),  # Allowed range 0..100                   # (12)
-            help='Set LED brightness level {error_msg}',
-            default=None)
-
-
     def get(self):
         """ Handles HTTP GET requests to return current LED state."""
         return state  # (13)
@@ -76,16 +72,21 @@ class LEDControl(Resource):  # (10)
 
     def post(self):
         """Handles HTTP POST requests to set LED brightness level."""
-        global state                                                                 # (14)
+        global state
 
-        args = self.args_parser.parse_args()                                         # (15)
+        payload = request.get_json(silent=True) or request.form
+
+        try:
+            args = LEDControlSchema().load(payload)
+        except ValidationError as err:
+            return {"message": err.messages}, 400
 
         # Set PWM duty cycle to adjust brightness level.
-        state['level'] = args.level                                                  # (16)
-        led.value = state['level'] / 100                                             # (17)
+        state['level'] = args['level']
+        led.value = state['level'] / 100
         logger.info("LED brightness level is " + str(state['level']))
 
-        return state                                                                 # (18)
+        return state
 
 
 
