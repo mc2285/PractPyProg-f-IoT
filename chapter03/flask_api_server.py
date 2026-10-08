@@ -10,6 +10,7 @@ import os
 from flask import Flask, request, render_template
 from flask_restful import Resource, Api
 from marshmallow import Schema, fields, validate, ValidationError
+from webargs.flaskparser import use_args
 from gpiozero import PWMLED
 
 
@@ -69,17 +70,10 @@ class LEDControl(Resource):  # (10)
         """ Handles HTTP GET requests to return current LED state."""
         return state  # (13)
 
-
-    def post(self):
+    @use_args(LEDControlSchema(), location="json_or_form")
+    def post(self, args):
         """Handles HTTP POST requests to set LED brightness level."""
         global state
-
-        payload = request.get_json(silent=True) or request.form
-
-        try:
-            args = LEDControlSchema().load(payload)
-        except ValidationError as err:
-            return {"message": err.messages}, 400
 
         # Set PWM duty cycle to adjust brightness level.
         state['level'] = args['level']
