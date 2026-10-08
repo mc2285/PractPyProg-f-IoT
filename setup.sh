@@ -1,4 +1,4 @@
 #!/bin/bash
 
-apt update && apt install git pipx && pipx install --global uv
+apt update && apt install pipx git lsof swig python3-dev liblgpio-dev && pipx install --global uv
 
