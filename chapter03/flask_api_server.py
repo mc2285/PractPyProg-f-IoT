@@ -71,7 +71,7 @@ class LEDControl(Resource):  # (10)
         return state  # (13)
 
     @use_args(LEDControlSchema(), location="json_or_form")
-    def post(self, args):
+    def patch(self, args):
         """Handles HTTP POST requests to set LED brightness level."""
         global state
 
