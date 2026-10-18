@@ -3,26 +3,19 @@ File: chapter03/flask_ws_server.py
 
 A Flask based Web Sockets server to control an LED built using Flask-SocketIO.
 
-Dependencies:
-  pip3 install gpiozero pigpio flask-socketio
-
 Built and tested with Python 3.7 on Raspberry Pi 4 Model B
 """
 import logging
 from flask import Flask, request, render_template
 from flask_socketio import SocketIO, send, emit                                      # (1)
 from gpiozero import PWMLED, Device
-from gpiozero.pins.pigpio import PiGPIOFactory
+import os
 
 
 # Initialize Logging
 logging.basicConfig(level=logging.WARNING)  # Global logging configuration
 logger = logging.getLogger('main')  # Logger for this module
 logger.setLevel(logging.INFO) # Debugging for this file.
-
-
-# Initialize GPIO
-Device.pin_factory = PiGPIOFactory() #set gpiozero to use pigpio by default.
 
 
 # Flask & Flask Restful Global Variables.
@@ -43,8 +36,9 @@ GPIO Related Functions
 def init_led():
     """Create and initialise PWMLED Object"""
     global led
-    led =  PWMLED(LED_GPIO_PIN)
-    led.value = state['level'] / 100
+    if led is None and os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        led =  PWMLED(LED_GPIO_PIN)
+        led.value = state['level'] / 100
 
 
 """
@@ -102,8 +96,6 @@ def handle_state(data):                                                         
     emit("led", state, broadcast=True)                                               # (13)
 
 
-# Initialise Module
-init_led()
 
 
 if __name__ == '__main__':
@@ -112,5 +104,8 @@ if __name__ == '__main__':
     # chmod -x flask_ws_server.py
     #
     # Flask GitHub Issue: https://github.com/pallets/flask/issues/3189
+
+    # Initialise Module
+    init_led()
 
     socketio.run(app, host='0.0.0.0', debug=True)                                    # (14)
